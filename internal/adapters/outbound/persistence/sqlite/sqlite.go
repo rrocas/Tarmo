@@ -2,6 +2,9 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -11,31 +14,40 @@ type SQLiteDB struct {
 }
 
 func NewSQLiteDB(dbPath string) (*SQLiteDB, error) {
+	// Ensure the parent directory exists, since SQLite won't create it
+	if dir := filepath.Dir(dbPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, fmt.Errorf("failed to create db directory %q: %w", dir, err)
+		}
+	}
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open database file %q: %w", dbPath, err)
+	}
+
+	// sql.Open doesn't actually connect — verify the file/connection works
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Enable WAL mode for better concurrency (allows concurrent reads and writes)
 	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to set WAL mode: %w", err)
 	}
-
 	// Set busy timeout to 5 seconds to handle lock contention
 	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to set busy timeout: %w", err)
 	}
-
 	// Enable foreign keys
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
 	dbInstance := &SQLiteDB{db: db}
 	if err := dbInstance.init(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
-
 	return dbInstance, nil
 }
 
