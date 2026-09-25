@@ -1,5 +1,7 @@
 data/
 build/
 
+cmd/rest_api/rsrc_windows_amd64.syso
+
 debug.http
 .env
