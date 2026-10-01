@@ -6,8 +6,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 
+	"tarmo"
+
 	"tarmo/internal/adapters/inbound/rest/middleware"
 	"tarmo/internal/adapters/inbound/rest/resources"
+	"tarmo/internal/adapters/inbound/rest/system"
 	"tarmo/internal/adapters/inbound/rest/templates"
 	"tarmo/internal/adapters/outbound/persistence/sqlite"
 	"tarmo/internal/config"
@@ -24,7 +27,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	logger.Info("Starting Tarmo on port %s", cfg.Port)
+	logger.Info("Starting Tarmo %s on port %s", tarmo.Version(), cfg.Port)
 
 	// DB connection
 	db, err := sqlite.NewSQLiteDB(cfg.DBPath)
@@ -42,6 +45,7 @@ func main() {
 	resUC := resourceUseCase.NewResourceUseCase(resourceRepo)
 
 	// Handlers
+	systemHandler := system.NewHandler(tarmo.Version())
 	templateHandler := templates.NewHandler(templateUC)
 	resourceHandler := resources.NewHandler(resUC)
 
@@ -58,6 +62,7 @@ func main() {
 	}))
 
 	r.Route("/", func(r chi.Router) {
+		system.RegisterRoutes(r, systemHandler)
 		templates.RegisterRoutes(r, templateHandler)
 		resources.RegisterRoutes(r, resourceHandler)
 	})
@@ -67,5 +72,4 @@ func main() {
 		logger.Fatal("server error: %v", err)
 		return
 	}
-
 }
