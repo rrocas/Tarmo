@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"tarmo/internal/core/shared"
+	"time"
 )
 
 // ===========================ERRORS============================
@@ -23,6 +24,8 @@ type Resource struct {
 	description string          // [OPTIONAL]
 	price       int             // [REQUIRED] In cents, or smallest currency unit
 	quantity    shared.Quantity // [REQUIRED] e.g. 100, 1
+	createdAt   time.Time       // [AUTO GENERATED] set by persistence
+	updatedAt   time.Time       // [AUTO GENERATED] set by persistence
 }
 
 // ===========================GETTERS===========================
@@ -34,6 +37,8 @@ func (r *Resource) Price() int                { return r.price }
 func (r *Resource) Quantity() shared.Quantity { return r.quantity }
 func (r *Resource) QuantityValue() float64    { return r.quantity.Value() }
 func (r *Resource) QuantityUnitName() string  { return r.quantity.Unit().Name }
+func (r *Resource) CreatedAt() time.Time      { return r.createdAt }
+func (r *Resource) UpdatedAt() time.Time      { return r.updatedAt }
 
 // ===========================CONSTRUCTORS======================
 
@@ -57,7 +62,7 @@ func NewResource(name string, description string, price int, quantity float64, u
 	return rsc, nil
 }
 
-func ReconstructResource(id int, name string, description string, price int, quantity float64, unitStr string) (*Resource, error) {
+func ReconstructResource(id int, name string, description string, price int, quantity float64, unitStr string, createdAt, updatedAt time.Time) (*Resource, error) {
 	qty, err := shared.NewQuantity(quantity, unitStr)
 	if err != nil {
 		return nil, err
@@ -71,6 +76,8 @@ func ReconstructResource(id int, name string, description string, price int, qua
 		description: description,
 		price:       price,
 		quantity:    baseQty,
+		createdAt:   createdAt,
+		updatedAt:   updatedAt,
 	}
 	if err := rsc.Validate(); err != nil {
 		return nil, err

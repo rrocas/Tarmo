@@ -17,7 +17,7 @@ func NewResourceRepository(db *SQLiteDB) *resourceRepository {
 
 func (r *resourceRepository) FindAll() ([]*domain.Resource, error) {
 	rows, err := r.db.Query(`
-		SELECT id, name, description, price, base_quantity, base_unit
+		SELECT id, name, description, price, base_quantity, base_unit, created_at, updated_at
 		FROM resources
 	`)
 	if err != nil {
@@ -34,15 +34,27 @@ func (r *resourceRepository) FindAll() ([]*domain.Resource, error) {
 			price        int
 			baseQuantity float64
 			baseUnit     string
+			createdAtStr string
+			updatedAtStr string
 		)
-		if err := rows.Scan(&id, &name, &description, &price, &baseQuantity, &baseUnit); err != nil {
+		if err := rows.Scan(&id, &name, &description, &price, &baseQuantity, &baseUnit, &createdAtStr, &updatedAtStr); err != nil {
 			return nil, err
 		}
 
-		rsc, err := domain.ReconstructResource(id, name, description, price, baseQuantity, baseUnit)
+		createdAt, err := parseTime(createdAtStr)
 		if err != nil {
 			return nil, err
 		}
+		updatedAt, err := parseTime(updatedAtStr)
+		if err != nil {
+			return nil, err
+		}
+
+		rsc, err := domain.ReconstructResource(id, name, description, price, baseQuantity, baseUnit, createdAt, updatedAt)
+		if err != nil {
+			return nil, err
+		}
+
 		resources = append(resources, rsc)
 	}
 	return resources, rows.Err()
@@ -50,7 +62,7 @@ func (r *resourceRepository) FindAll() ([]*domain.Resource, error) {
 
 func (r *resourceRepository) FindByID(id int) (*domain.Resource, error) {
 	row := r.db.QueryRow(`
-		SELECT id, name, description, price, base_quantity, base_unit
+		SELECT id, name, description, price, base_quantity, base_unit, created_at, updated_at
 		FROM resources WHERE id = ?
 	`, id)
 
@@ -61,9 +73,11 @@ func (r *resourceRepository) FindByID(id int) (*domain.Resource, error) {
 		price        int
 		baseQuantity float64
 		baseUnit     string
+		createdAtStr string
+		updatedAtStr string
 	)
 
-	err := row.Scan(&ResourceID, &name, &description, &price, &baseQuantity, &baseUnit)
+	err := row.Scan(&ResourceID, &name, &description, &price, &baseQuantity, &baseUnit, &createdAtStr, &updatedAtStr)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, resources.ErrResourceNotFound // Not found
@@ -71,13 +85,23 @@ func (r *resourceRepository) FindByID(id int) (*domain.Resource, error) {
 		return nil, err
 	}
 
-	return domain.ReconstructResource(id, name, description, price, baseQuantity, baseUnit)
+	createdAt, err := parseTime(createdAtStr)
+	if err != nil {
+		return nil, err
+	}
+	updatedAt, err := parseTime(updatedAtStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return domain.ReconstructResource(id, name, description, price, baseQuantity, baseUnit, createdAt, updatedAt)
 }
 
 func (r *resourceRepository) Save(resource *domain.Resource) (int, error) {
+	now := nowUTC()
 	query := `
-        INSERT INTO resources (name, description, price, base_quantity, base_unit)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO resources (name, description, price, base_quantity, base_unit, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 	result, err := r.db.Exec(query,
 		resource.Name(),
@@ -85,6 +109,8 @@ func (r *resourceRepository) Save(resource *domain.Resource) (int, error) {
 		resource.Price(),
 		resource.QuantityValue(),
 		resource.QuantityUnitName(),
+		now,
+		now,
 	)
 	if err != nil {
 		return 0, err
@@ -101,7 +127,7 @@ func (r *resourceRepository) Save(resource *domain.Resource) (int, error) {
 func (r *resourceRepository) Update(rsc *domain.Resource) error {
 	query := `
         UPDATE resources 
-        SET name = ?, description = ?, price = ?, base_quantity = ?, base_unit = ?
+        SET name = ?, description = ?, price = ?, base_quantity = ?, base_unit = ?, updated_at = ?
         WHERE id = ?
     `
 	_, err := r.db.Exec(query,
@@ -110,6 +136,7 @@ func (r *resourceRepository) Update(rsc *domain.Resource) error {
 		rsc.Price(),
 		rsc.QuantityValue(),
 		rsc.QuantityUnitName(),
+		nowUTC(),
 		rsc.ID(),
 	)
 	if err != nil {
