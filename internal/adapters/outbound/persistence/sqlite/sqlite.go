@@ -26,7 +26,6 @@ func NewSQLiteDB(dbPath string) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("failed to open database file %q: %w", dbPath, err)
 	}
 
-	// sql.Open doesn't actually connect — verify the file/connection works
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -47,6 +46,9 @@ func NewSQLiteDB(dbPath string) (*SQLiteDB, error) {
 	dbInstance := &SQLiteDB{db: db}
 	if err := dbInstance.init(); err != nil {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+	if err := dbInstance.migrate(); err != nil {
+		return nil, fmt.Errorf("failed to migrate schema: %w", err)
 	}
 	return dbInstance, nil
 }
@@ -94,4 +96,44 @@ func (r *SQLiteDB) init() error {
   `
 	_, err := r.db.Exec(query)
 	return err
+}
+
+var migrations = []string{
+	// v1: created_at / updated_at
+	`
+	ALTER TABLE resources ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
+	ALTER TABLE resources ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+	ALTER TABLE templates ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
+	ALTER TABLE templates ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
+	UPDATE resources SET created_at = strftime('%Y-%m-%dT%H:%M:%SZ','now'),
+	                     updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now');
+	UPDATE templates SET created_at = strftime('%Y-%m-%dT%H:%M:%SZ','now'),
+	                     updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now');
+	`,
+}
+
+func (r *SQLiteDB) migrate() error {
+	var current int
+	if err := r.db.QueryRow("PRAGMA user_version").Scan(&current); err != nil {
+		return fmt.Errorf("failed to read schema version: %w", err)
+	}
+
+	for i := current; i < len(migrations); i++ {
+		tx, err := r.db.Begin()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(migrations[i]); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("migration v%d failed: %w", i+1, err)
+		}
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
