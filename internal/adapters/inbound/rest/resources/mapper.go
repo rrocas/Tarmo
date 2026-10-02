@@ -2,6 +2,7 @@ package resources
 
 import (
 	"tarmo/internal/core/resources/ports/inbound"
+	"time"
 )
 
 func ToCreateCommand(req CreateResourceRequestDTO) inbound.CreateResourceCommand {
@@ -34,6 +35,8 @@ func ToResponse(dto *inbound.ResourceDTO) ResourceJSONResponseDTO {
 		Price:        dto.Price,
 		BaseQuantity: dto.Quantity.Value,
 		BaseUnit:     dto.Quantity.Unit.Name,
+		CreatedAt:    dto.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:    dto.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

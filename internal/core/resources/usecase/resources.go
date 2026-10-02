@@ -40,6 +40,8 @@ func (uc *ResourceUseCase) GetAll() ([]inbound.ResourceDTO, error) {
 			Description: resource.Description(),
 			Price:       resource.Price(),
 			Quantity:    qtyDTO,
+			CreatedAt:   resource.CreatedAt(),
+			UpdatedAt:   resource.UpdatedAt(),
 		})
 	}
 
@@ -65,6 +67,8 @@ func (uc *ResourceUseCase) GetByID(id int) (inbound.ResourceDTO, error) {
 		Description: resource.Description(),
 		Price:       resource.Price(),
 		Quantity:    qtyDTO,
+		CreatedAt:   resource.CreatedAt(),
+		UpdatedAt:   resource.UpdatedAt(),
 	}, nil
 }
 

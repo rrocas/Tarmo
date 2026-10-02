@@ -1,6 +1,9 @@
 package inbound
 
-import "tarmo/internal/core/shared"
+import (
+	"tarmo/internal/core/shared"
+	"time"
+)
 
 type CreateResourceCommand struct {
 	Name        string
@@ -25,4 +28,6 @@ type ResourceDTO struct {
 	Description string
 	Price       int
 	Quantity    shared.QuantityDTO
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

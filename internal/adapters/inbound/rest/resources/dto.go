@@ -7,6 +7,8 @@ type ResourceJSONResponseDTO struct {
 	Price        int     `json:"price"`
 	BaseQuantity float64 `json:"base_quantity"`
 	BaseUnit     string  `json:"base_unit"`
+	CreatedAt    string  `json:"created_at"`
+	UpdatedAt    string  `json:"updated_at"`
 }
 
 type CreateResourceRequestDTO struct {
