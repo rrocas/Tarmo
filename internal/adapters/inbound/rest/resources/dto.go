@@ -13,7 +13,7 @@ type ResourceJSONResponseDTO struct {
 
 type CreateResourceRequestDTO struct {
 	Name        string  `json:"name"`
-	Description string  `json:"description"`
+	Description string  `json:"description"  validate:"optional"`
 	Price       int     `json:"price"`
 	Quantity    float64 `json:"quantity"`
 	Unit        string  `json:"unit"`
@@ -22,7 +22,7 @@ type CreateResourceRequestDTO struct {
 type UpdateResourceRequestDTO struct {
 	ID          int     `json:"id"`
 	Name        string  `json:"name"`
-	Description string  `json:"description"`
+	Description string  `json:"description"  validate:"optional"`
 	Price       int     `json:"price"`
 	Quantity    float64 `json:"quantity"`
 	Unit        string  `json:"unit"`
