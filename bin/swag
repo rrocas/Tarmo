@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+go run github.com/swaggo/swag/cmd/swag@latest init \
+  -g cmd/rest_api/main.go \
+  -d . \
+  -o docs/rest_api/ \
+  --parseInternal

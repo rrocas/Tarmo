@@ -1,0 +1,437 @@
+basePath: /
+definitions:
+  resources.CreateResourceRequestDTO:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+      quantity:
+        type: number
+      unit:
+        type: string
+    type: object
+  resources.ResourceJSONResponseDTO:
+    properties:
+      base_quantity:
+        type: number
+      base_unit:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  resources.UpdateResourceRequestDTO:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: integer
+      quantity:
+        type: number
+      unit:
+        type: string
+    type: object
+  templates.CreateTemplateRequestDTO:
+    properties:
+      description:
+        type: string
+      difficulty:
+        type: integer
+      name:
+        type: string
+      quantity:
+        type: number
+      resources:
+        items:
+          $ref: '#/definitions/templates.ResourceRefDTO'
+        type: array
+      steps:
+        items:
+          $ref: '#/definitions/templates.StepDTO'
+        type: array
+      unit:
+        type: string
+    type: object
+  templates.ResourceRefDTO:
+    properties:
+      quantity:
+        type: number
+      resource_id:
+        type: integer
+      unit:
+        type: string
+    type: object
+  templates.ResourceRefResponseDTO:
+    properties:
+      quantity:
+        type: number
+      resource_id:
+        type: integer
+      unit:
+        type: string
+    type: object
+  templates.StepDTO:
+    properties:
+      instructions:
+        type: string
+      name:
+        type: string
+    type: object
+  templates.StepJSONResponseDTO:
+    properties:
+      instructions:
+        type: string
+      name:
+        type: string
+      order:
+        type: integer
+    type: object
+  templates.TemplateJSONResponseDTO:
+    properties:
+      description:
+        type: string
+      difficulty:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      quantity:
+        type: number
+      resources:
+        items:
+          $ref: '#/definitions/templates.ResourceRefResponseDTO'
+        type: array
+      steps:
+        items:
+          $ref: '#/definitions/templates.StepJSONResponseDTO'
+        type: array
+      unit:
+        type: string
+    type: object
+  templates.TemplateListJSONResponseDTO:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  templates.UpdateTemplateRequestDTO:
+    properties:
+      description:
+        type: string
+      difficulty:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      quantity:
+        type: number
+      resources:
+        items:
+          $ref: '#/definitions/templates.ResourceRefDTO'
+        type: array
+      steps:
+        items:
+          $ref: '#/definitions/templates.StepDTO'
+        type: array
+      unit:
+        type: string
+    type: object
+host: localhost:9136
+info:
+  contact: {}
+  description: Optimize and control processes based on templates.
+  title: Tarmo API
+  version: 2.2.0
+paths:
+  /resources:
+    get:
+      description: Get a list of all resources in the collection
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/resources.ResourceJSONResponseDTO'
+            type: array
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: List all resources
+      tags:
+      - resources
+    post:
+      consumes:
+      - application/json
+      description: Add a new resource to the collection
+      parameters:
+      - description: Resource object
+        in: body
+        name: resource
+        required: true
+        schema:
+          $ref: '#/definitions/resources.CreateResourceRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: invalid request
+          schema:
+            type: string
+      summary: Create a new resource
+      tags:
+      - resources
+  /resources/{id}:
+    delete:
+      description: Remove a resource from the collection
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: resource not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Delete a resource
+      tags:
+      - resources
+    get:
+      description: Get detailed information about a single resource
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resources.ResourceJSONResponseDTO'
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: resource not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Get a resource by ID
+      tags:
+      - resources
+    put:
+      consumes:
+      - application/json
+      description: Update an existing resource's information
+      parameters:
+      - description: Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated resource object
+        in: body
+        name: resource
+        required: true
+        schema:
+          $ref: '#/definitions/resources.UpdateResourceRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "404":
+          description: template not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Update a resource
+      tags:
+      - resources
+  /templates:
+    get:
+      description: Get a list of all templates in the collection
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/templates.TemplateListJSONResponseDTO'
+            type: array
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: List all templates
+      tags:
+      - templates
+    post:
+      consumes:
+      - application/json
+      description: Add a new template to the collection
+      parameters:
+      - description: Template object
+        in: body
+        name: template
+        required: true
+        schema:
+          $ref: '#/definitions/templates.CreateTemplateRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: invalid request
+          schema:
+            type: string
+      summary: Create a new template
+      tags:
+      - templates
+  /templates/{id}:
+    delete:
+      description: Remove a template from the collection
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: template not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Delete a template
+      tags:
+      - templates
+    get:
+      description: Get detailed information about a single template
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/templates.TemplateJSONResponseDTO'
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: template not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Get a template by ID
+      tags:
+      - templates
+    put:
+      consumes:
+      - application/json
+      description: Update an existing template's information
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated template object
+        in: body
+        name: template
+        required: true
+        schema:
+          $ref: '#/definitions/templates.UpdateTemplateRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "404":
+          description: template not found
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Update a template
+      tags:
+      - templates
+swagger: "2.0"

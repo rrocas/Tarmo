@@ -20,7 +20,7 @@ import (
 )
 
 // @title Tarmo API
-// @version 2.1.0
+// @version 2.2.0
 // @description Optimize and control processes based on templates.
 // @host localhost:9136
 // @BasePath /
