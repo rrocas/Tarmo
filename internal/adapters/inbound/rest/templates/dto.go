@@ -19,6 +19,8 @@ type TemplateJSONResponseDTO struct {
 	Quantity    float64                  `json:"quantity"`
 	Unit        string                   `json:"unit"`
 	Difficulty  int                      `json:"difficulty"`
+	CreatedAt   string                   `json:"created_at"`
+	UpdatedAt   string                   `json:"updated_at"`
 	Steps       []StepJSONResponseDTO    `json:"steps"`
 	Resources   []ResourceRefResponseDTO `json:"resources"`
 }
@@ -27,6 +29,8 @@ type TemplateListJSONResponseDTO struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
 }
 
 type CreateTemplateRequestDTO struct {

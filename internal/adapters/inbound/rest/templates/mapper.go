@@ -2,6 +2,7 @@ package templates
 
 import (
 	"tarmo/internal/core/templates/ports/inbound"
+	"time"
 )
 
 func ToCreateCommand(req CreateTemplateRequestDTO) inbound.CreateTemplateCommand {
@@ -26,8 +27,9 @@ func ToCreateCommand(req CreateTemplateRequestDTO) inbound.CreateTemplateCommand
 		Quantity:    req.Quantity,
 		Unit:        req.Unit,
 		Difficulty:  req.Difficulty,
-		Steps:       steps,
-		Resources:   resources,
+
+		Steps:     steps,
+		Resources: resources,
 	}
 }
 
@@ -85,6 +87,8 @@ func ToResponse(dto *inbound.TemplateDTO) TemplateJSONResponseDTO {
 		Quantity:    dto.Quantity.Value,
 		Unit:        dto.Quantity.Unit.Name,
 		Difficulty:  dto.Difficulty,
+		CreatedAt:   dto.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   dto.UpdatedAt.UTC().Format(time.RFC3339),
 		Steps:       steps,
 		Resources:   resources,
 	}
