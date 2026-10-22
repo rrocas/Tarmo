@@ -40,6 +40,8 @@ func (uc *TemplateUseCase) GetAll() ([]inbound.TemplateDTO, error) {
 			Description: template.Description(),
 			Quantity:    qtyDTO,
 			Difficulty:  template.Difficulty(),
+			UpdatedAt:   template.UpdatedAt(),
+			CreatedAt:   template.CreatedAt(),
 			Resources:   mapResourcesToDTO(template.Resources()),
 		})
 	}
@@ -75,6 +77,8 @@ func (uc *TemplateUseCase) GetByID(id int) (inbound.TemplateDTO, error) {
 		Description: template.Description(),
 		Quantity:    qtyDTO,
 		Difficulty:  template.Difficulty(),
+		UpdatedAt:   template.UpdatedAt(),
+		CreatedAt:   template.CreatedAt(),
 		Steps:       steps,
 		Resources:   mapResourcesToDTO(template.Resources()),
 	}, nil

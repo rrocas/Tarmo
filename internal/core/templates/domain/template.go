@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"tarmo/internal/core/shared"
+	"time"
 )
 
 // ===========================ERRORS============================
@@ -29,6 +30,8 @@ type Template struct {
 	difficulty  int             // [REQUIRED]
 	steps       []Step          // [REQUIRED] MIN 1
 	resources   []ResourceRef
+	createdAt   time.Time // [AUTO GENERATED] set by persistence
+	updatedAt   time.Time // [AUTO GENERATED] set by persistence
 }
 
 type Step struct {
@@ -53,6 +56,8 @@ func (t *Template) QuantityUnitName() string  { return t.quantity.Unit().Name }
 func (t *Template) Difficulty() int           { return t.difficulty }
 func (t *Template) Steps() []Step             { return append([]Step(nil), t.steps...) }
 func (t *Template) Resources() []ResourceRef  { return append([]ResourceRef(nil), t.resources...) }
+func (t *Template) CreatedAt() time.Time      { return t.createdAt }
+func (t *Template) UpdatedAt() time.Time      { return t.updatedAt }
 
 func (s *Step) Order() int           { return s.order }
 func (s *Step) Name() string         { return s.name }
@@ -133,6 +138,7 @@ func ReconstructTemplate(
 	steps []Step,
 	description string,
 	resources []ResourceRef,
+	createdAt, updatedAt time.Time,
 ) (*Template, error) {
 
 	qty, err := shared.NewQuantity(quantity, unitStr)
@@ -148,6 +154,8 @@ func ReconstructTemplate(
 		steps:       steps,
 		description: description,
 		resources:   resources,
+		createdAt:   createdAt,
+		updatedAt:   updatedAt,
 	}
 
 	if err := t.Validate(); err != nil {

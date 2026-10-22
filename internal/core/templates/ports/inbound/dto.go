@@ -1,6 +1,9 @@
 package inbound
 
-import "tarmo/internal/core/shared"
+import (
+	"tarmo/internal/core/shared"
+	"time"
+)
 
 type CreateTemplateCommand struct {
 	Name        string
@@ -40,6 +43,8 @@ type TemplateDTO struct {
 	Description string
 	Quantity    shared.QuantityDTO
 	Difficulty  int
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Steps       []StepDTO
 	Resources   []ResourceRefDTO
 }

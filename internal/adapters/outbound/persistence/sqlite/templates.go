@@ -18,9 +18,9 @@ func NewTemplateRepository(db *SQLiteDB) *templateRepository {
 func (r *templateRepository) FindAll() ([]*domain.Template, error) {
 	// Get all templates
 	rows, err := r.db.Query(`
-		SELECT id, name, description, quantity, unit, difficulty
-		FROM templates
-	`)
+        SELECT id, name, description, quantity, unit, difficulty, created_at, updated_at
+        FROM templates
+    `)
 	if err != nil {
 		return nil, err
 	}
@@ -28,18 +28,20 @@ func (r *templateRepository) FindAll() ([]*domain.Template, error) {
 
 	// Collect template data first, then close rows immediately
 	type templateData struct {
-		id          int
-		name        string
-		description string
-		quantity    float64
-		unit        string
-		difficulty  int
+		id           int
+		name         string
+		description  string
+		quantity     float64
+		unit         string
+		difficulty   int
+		createdAtStr string
+		updatedAtStr string
 	}
 
 	var templatesData []templateData
 	for rows.Next() {
 		var td templateData
-		if err := rows.Scan(&td.id, &td.name, &td.description, &td.quantity, &td.unit, &td.difficulty); err != nil {
+		if err := rows.Scan(&td.id, &td.name, &td.description, &td.quantity, &td.unit, &td.difficulty, &td.createdAtStr, &td.updatedAtStr); err != nil {
 			return nil, err
 		}
 		templatesData = append(templatesData, td)
@@ -50,14 +52,14 @@ func (r *templateRepository) FindAll() ([]*domain.Template, error) {
 	}
 
 	// Now build full templates by loading steps and resources for each
-	var templates []*domain.Template
+	var result []*domain.Template
 	for _, td := range templatesData {
 		// Get steps for this template
 		stepRows, err := r.db.Query(`
-			SELECT step_order, name, instructions
-			FROM steps WHERE template_id = ?
-			ORDER BY step_order
-		`, td.id)
+            SELECT step_order, name, instructions
+            FROM steps WHERE template_id = ?
+            ORDER BY step_order
+        `, td.id)
 		if err != nil {
 			return nil, err
 		}
@@ -90,9 +92,9 @@ func (r *templateRepository) FindAll() ([]*domain.Template, error) {
 		// Get resources for this template
 		resourceRefs := []domain.ResourceRef{}
 		resourceRows, err := r.db.Query(`
-			SELECT resource_id, quantity, unit
-			FROM template_resources WHERE template_id = ?
-		`, td.id)
+            SELECT resource_id, quantity, unit
+            FROM template_resources WHERE template_id = ?
+        `, td.id)
 		if err != nil {
 			return nil, err
 		}
@@ -121,8 +123,17 @@ func (r *templateRepository) FindAll() ([]*domain.Template, error) {
 			return nil, err
 		}
 
+		createdAt, err := parseTime(td.createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+		updatedAt, err := parseTime(td.updatedAtStr)
+		if err != nil {
+			return nil, err
+		}
+
 		// Reconstruct template with steps
-		template, err := domain.ReconstructTemplate(
+		tmpl, err := domain.ReconstructTemplate(
 			td.id,
 			td.name,
 			td.quantity,
@@ -131,35 +142,39 @@ func (r *templateRepository) FindAll() ([]*domain.Template, error) {
 			steps,
 			td.description,
 			resourceRefs,
+			createdAt,
+			updatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		templates = append(templates, template)
+		result = append(result, tmpl)
 	}
 
-	return templates, nil
+	return result, nil
 }
 
 func (r *templateRepository) FindByID(id int) (*domain.Template, error) {
 	// Search template
 	row := r.db.QueryRow(`
-			SELECT id, name, description, quantity, unit, difficulty
-			FROM templates WHERE id=?
-	`, id)
+            SELECT id, name, description, quantity, unit, difficulty, created_at, updated_at
+            FROM templates WHERE id=?
+    `, id)
 
 	// Temp variables
 	var (
-		templateID  int
-		name        string
-		description string
-		quantity    float64
-		unit        string
-		difficulty  int
+		templateID   int
+		name         string
+		description  string
+		quantity     float64
+		unit         string
+		difficulty   int
+		createdAtStr string
+		updatedAtStr string
 	)
 
-	err := row.Scan(&templateID, &name, &description, &quantity, &unit, &difficulty)
+	err := row.Scan(&templateID, &name, &description, &quantity, &unit, &difficulty, &createdAtStr, &updatedAtStr)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, templates.ErrTemplateNotFound // Not found
@@ -168,14 +183,13 @@ func (r *templateRepository) FindByID(id int) (*domain.Template, error) {
 	}
 
 	stepRows, err := r.db.Query(`
-		SELECT step_order, name, instructions
-		FROM steps WHERE template_id = ?
-		ORDER BY step_order
-	`, templateID)
+        SELECT step_order, name, instructions
+        FROM steps WHERE template_id = ?
+        ORDER BY step_order
+    `, templateID)
 	if err != nil {
 		return nil, err
 	}
-	defer stepRows.Close()
 
 	steps := []domain.Step{}
 	for stepRows.Next() {
@@ -185,25 +199,31 @@ func (r *templateRepository) FindByID(id int) (*domain.Template, error) {
 			instructions string
 		)
 		if err := stepRows.Scan(&order, &stepName, &instructions); err != nil {
+			stepRows.Close()
 			return nil, err
 		}
 
 		step, err := domain.NewStep(stepName, instructions, order)
 		if err != nil {
+			stepRows.Close()
 			return nil, err // Invalid step
 		}
 		steps = append(steps, step)
 	}
+	stepRows.Close()
+
+	if err := stepRows.Err(); err != nil {
+		return nil, err
+	}
 
 	resourceRefs := []domain.ResourceRef{}
 	resourceRows, err := r.db.Query(`
-		SELECT resource_id, quantity, unit
-		FROM template_resources WHERE template_id = ?
-	`, templateID)
+        SELECT resource_id, quantity, unit
+        FROM template_resources WHERE template_id = ?
+    `, templateID)
 	if err != nil {
 		return nil, err
 	}
-	defer resourceRows.Close()
 
 	for resourceRows.Next() {
 		var (
@@ -212,14 +232,30 @@ func (r *templateRepository) FindByID(id int) (*domain.Template, error) {
 			unit       string
 		)
 		if err := resourceRows.Scan(&resourceID, &quantity, &unit); err != nil {
+			resourceRows.Close()
 			return nil, err
 		}
 
 		resourceRef, err := domain.NewResourceRef(resourceID, quantity, unit)
 		if err != nil {
+			resourceRows.Close()
 			return nil, err // Invalid resource ref
 		}
 		resourceRefs = append(resourceRefs, resourceRef)
+	}
+	resourceRows.Close()
+
+	if err := resourceRows.Err(); err != nil {
+		return nil, err
+	}
+
+	createdAt, err := parseTime(createdAtStr)
+	if err != nil {
+		return nil, err
+	}
+	updatedAt, err := parseTime(updatedAtStr)
+	if err != nil {
+		return nil, err
 	}
 
 	// Reconstruct
@@ -232,10 +268,13 @@ func (r *templateRepository) FindByID(id int) (*domain.Template, error) {
 		steps,
 		description,
 		resourceRefs,
+		createdAt,
+		updatedAt,
 	)
 }
 
 func (r *templateRepository) Save(tmpl *domain.Template) (id int, err error) {
+	now := nowUTC()
 
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -245,15 +284,18 @@ func (r *templateRepository) Save(tmpl *domain.Template) (id int, err error) {
 	defer func() {
 		if err != nil {
 			tx.Rollback()
-		} else {
-			err = tx.Commit()
+			id = 0
+			return
+		}
+		if err = tx.Commit(); err != nil {
+			id = 0
 		}
 	}()
 
 	query := `
-		INSERT INTO templates (name, description, quantity, unit, difficulty)
-		VALUES (?, ?, ?, ?, ?)
-	`
+        INSERT INTO templates (name, description, quantity, unit, difficulty, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `
 
 	result, err := tx.Exec(query,
 		tmpl.Name(),
@@ -261,6 +303,8 @@ func (r *templateRepository) Save(tmpl *domain.Template) (id int, err error) {
 		tmpl.QuantityValue(),
 		tmpl.QuantityUnitName(),
 		tmpl.Difficulty(),
+		now,
+		now,
 	)
 	if err != nil {
 		return
@@ -291,7 +335,7 @@ func (r *templateRepository) Save(tmpl *domain.Template) (id int, err error) {
 	return
 }
 
-func (r *templateRepository) Update(tmpl *domain.Template) error {
+func (r *templateRepository) Update(tmpl *domain.Template) (err error) {
 	// Begin transaction
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -301,23 +345,35 @@ func (r *templateRepository) Update(tmpl *domain.Template) error {
 	defer func() {
 		if err != nil {
 			tx.Rollback()
+			return
 		}
+		err = tx.Commit()
 	}()
 
 	query := `
         UPDATE templates 
-        SET name = ?, description = ?, quantity = ?, unit = ?, difficulty = ?
+        SET name = ?, description = ?, quantity = ?, unit = ?, difficulty = ?, updated_at = ?
         WHERE id = ?
     `
-	_, err = tx.Exec(query,
+	result, err := tx.Exec(query,
 		tmpl.Name(),
 		tmpl.Description(),
 		tmpl.QuantityValue(),
 		tmpl.QuantityUnitName(),
 		tmpl.Difficulty(),
+		nowUTC(),
 		tmpl.ID(),
 	)
 	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		err = templates.ErrTemplateNotFound
 		return err
 	}
 
@@ -341,20 +397,19 @@ func (r *templateRepository) Update(tmpl *domain.Template) error {
 
 	resourceQuery := `INSERT INTO template_resources (template_id, resource_id, quantity, unit) VALUES (?, ?, ?, ?)`
 	for _, resource := range tmpl.Resources() {
-		_, err := tx.Exec(resourceQuery, tmpl.ID(), resource.ResourceID(), resource.QuantityValue(), resource.QuantityUnitName())
+		_, err = tx.Exec(resourceQuery, tmpl.ID(), resource.ResourceID(), resource.QuantityValue(), resource.QuantityUnitName())
 		if err != nil {
 			return err
 		}
 	}
 
-	// No errors, commit
-	return tx.Commit()
+	return nil
 }
 
 func (r *templateRepository) Remove(id int) error {
 	result, err := r.db.Exec(`
-		DELETE FROM templates WHERE id = ?
-	`, id)
+        DELETE FROM templates WHERE id = ?
+    `, id)
 	if err != nil {
 		return err
 	}
